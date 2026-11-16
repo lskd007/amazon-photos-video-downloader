@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amazon-photos-video-downloader"
+version = "0.1.0"
+description = "Download videos from Amazon Photos"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["requests>=2.31", "pywebview>=5"]
+# pywebview pulls in pyobjc on macOS and pythonnet on Windows automatically
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+apvd = "amazon_photos_video_downloader.cli:main"
+
+[project.gui-scripts]
+apvd-gui = "amazon_photos_video_downloader.gui:main"
+
+[tool.setuptools.package-data]
+amazon_photos_video_downloader = ["ui/*"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

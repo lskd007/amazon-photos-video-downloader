@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amazon Photos videos</title>
+<style>
+  :root {
+    --paper: #ECEFF1; --panel: #F8FAFB; --ink: #16212B; --muted: #5F7080; --line: #CBD3D9;
+    --active: #0E7C86; --done: #2E8B57; --fault: #C0392B; --frame-off: #D5DCE1;
+    --display: "Bahnschrift", "Segoe UI Variable Display", "Segoe UI", "SF Pro Display", -apple-system, "Helvetica Neue", sans-serif;
+    --body: "Segoe UI Variable Text", "Segoe UI", "SF Pro Text", -apple-system, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper: #12181D; --panel: #1A2229; --ink: #E6ECF0; --muted: #8DA0AE; --line: #2C3943;
+            --active: #3FC1CC; --done: #5BC186; --fault: #F0705F; --frame-off: #2A353E; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 var(--body); }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 20px 48px; }
+  h1 { font: 600 22px/1.2 var(--display); margin: 0; letter-spacing: .2px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--active); outline-offset: 2px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .account { display: flex; align-items: center; gap: 10px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  .dot.on { background: var(--done); } .dot.bad { background: var(--fault); }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: var(--paper); padding: 6px 14px; border-radius: 3px; }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn:disabled { opacity: .5; cursor: default; }
+
+  .now { margin-top: 28px; padding: 18px 20px; background: var(--panel); border: 1px solid var(--line); }
+  .now .name { font: 500 16px/1.3 var(--display); overflow-wrap: anywhere; }
+  .now .meta { color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .summary { display: flex; gap: 22px; margin-top: 14px; flex-wrap: wrap; color: var(--muted); }
+  .summary b { font: 600 20px/1 var(--display); color: var(--ink); margin-right: 5px; font-variant-numeric: tabular-nums; }
+  .summary .f b { color: var(--fault); }
+
+  /* frame strip: the progress bar, drawn as film frames */
+  .strip { display: grid; gap: 3px; margin-top: 14px; }
+  .strip i { height: 20px; background: var(--frame-off); border-radius: 1px; }
+  .strip i.on { background: var(--active); }
+  .strip.small { gap: 2px; margin: 0; width: 120px; }
+  .strip.small i { height: 8px; }
+  .done .strip i.on, .strip.ok i.on { background: var(--done); }
+  .strip.bad i { background: var(--fault); opacity: .35; }
+  .strip.idle i.on { animation: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .strip.live i.lead { animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: .35; } }
+  }
+
+  h2 { font: 600 15px/1 var(--display); margin: 32px 0 8px; }
+  ul { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+  li { display: grid; grid-template-columns: 1fr 120px 92px; gap: 14px; align-items: center;
+       padding: 9px 2px; border-bottom: 1px solid var(--line); }
+  li .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  li .s { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  li.failed .s { color: var(--fault); }
+  li.done .s { color: var(--done); }
+  .empty { padding: 18px 2px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .err { margin-top: 14px; color: var(--fault); }
+
+  details { margin-top: 32px; }
+  summary { cursor: pointer; font: 600 15px/1 var(--display); }
+  .set { display: grid; grid-template-columns: 150px 1fr; gap: 10px 14px; align-items: center; margin-top: 14px; max-width: 560px; }
+  .set input[type=text], .set input[type=number], .set select {
+    font: inherit; padding: 5px 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 3px; }
+  .row { display: flex; gap: 8px; } .row input { flex: 1; min-width: 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Amazon Photos videos</h1>
+    <div class="account">
+      <span class="dot" id="dot"></span><span id="acct">Checking…</span>
+      <button class="btn" id="signin">Sign in</button>
+      <button class="btn ghost" id="signout" hidden>Sign out</button>
+    </div>
+  </header>
+
+  <section class="now" aria-live="polite">
+    <div class="name" id="curName">Nothing downloading</div>
+    <div class="meta" id="curMeta"></div>
+    <div class="strip" id="curStrip"></div>
+    <div class="summary">
+      <span><b id="nDone">0</b>downloaded</span>
+      <span><b id="nLeft">0</b>waiting</span>
+      <span class="f"><b id="nFail">0</b>failed</span>
+      <span><b id="nAlready">0</b>from earlier runs</span>
+    </div>
+    <div class="err" id="err" hidden></div>
+    <div style="margin-top:16px;display:flex;gap:8px;align-items:center">
+      <button class="btn" id="sync">Check for new videos</button>
+      <button class="btn ghost" id="stop" hidden>Stop</button>
+      <span class="meta" id="last"></span>
+    </div>
+  </section>
+
+  <h2>This session</h2>
+  <ul id="list"></ul>
+
+  <details>
+    <summary>Settings</summary>
+    <div class="set">
+      <label for="out">Save videos to</label>
+      <div class="row"><input type="text" id="out" readonly><button class="btn ghost" id="browse">Choose folder</button></div>
+      <label for="tld">Amazon site</label>
+      <select id="tld">
+        <option value="co.jp">amazon.co.jp</option><option value="com">amazon.com</option>
+        <option value="co.uk">amazon.co.uk</option><option value="de">amazon.de</option>
+        <option value="fr">amazon.fr</option><option value="ca">amazon.ca</option>
+        <option value="com.au">amazon.com.au</option><option value="in">amazon.in</option>
+      </select>
+      <label for="auto">Check automatically</label>
+      <div><input type="checkbox" id="auto"> every <input type="number" id="interval" min="5" max="1440" style="width:70px"> minutes</div>
+      <label for="trash">After download</label>
+      <div><input type="checkbox" id="trash"> move the video to the Amazon Photos trash</div>
+    </div>
+  </details>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const api = () => window.pywebview && window.pywebview.api;
+const fmtB = b => b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1e6).toFixed(1)+' MB' : Math.round(b/1e3)+' KB';
+const ago = t => { if(!t) return ''; const m = Math.round((Date.now()/1000 - t)/60); return m < 1 ? 'Checked just now' : 'Checked '+m+' min ago'; };
+const LABEL = {queued:'Waiting', downloading:'Downloading', done:'Done', failed:'Failed'};
+
+function strip(el, n, frac, cls) {
+  if (el.children.length !== n) { el.style.gridTemplateColumns = `repeat(${n},1fr)`; el.innerHTML = '<i></i>'.repeat(n); }
+  const on = Math.floor(frac * n);
+  [...el.children].forEach((c, i) => { c.className = i < on ? 'on' : ''; if (cls==='live' && i === on) c.className = 'lead on'; });
+  el.className = el.className.split(' ').filter(c => c==='strip'||c==='small').join(' ') + ' ' + (cls||'');
+}
+const frac = it => it.status==='done' ? 1 : it.size ? Math.min(1, it.done/it.size) : 0;
+
+let focused = false;
+function render(s) {
+  const sy = s.sync, items = sy.items;
+  $('dot').className = 'dot ' + (s.connected ? 'on' : s.expired ? 'bad' : '');
+  $('acct').textContent = s.signing_in ? 'Waiting for you to sign in…' :
+    s.connected ? 'Signed in' : s.expired ? 'Session expired. Sign in again.' : 'Not signed in';
+  $('signin').hidden = s.connected; $('signin').disabled = s.signing_in;
+  $('signin').textContent = s.expired ? 'Sign in again' : 'Sign in to Amazon';
+  $('signout').hidden = !s.connected;
+
+  const cur = items.find(i => i.status === 'downloading');
+  const cnt = k => items.filter(i => i.status === k).length;
+  $('nDone').textContent = cnt('done'); $('nLeft').textContent = cnt('queued') + (cur ? 1 : 0);
+  $('nFail').textContent = cnt('failed'); $('nAlready').textContent = sy.already;
+  $('curName').textContent = cur ? cur.name : sy.running ? 'Looking for videos…' : 'Nothing downloading';
+  $('curMeta').textContent = cur ? `${fmtB(cur.done)}${cur.size ? ' of ' + fmtB(cur.size) : ''}` : '';
+  strip($('curStrip'), 48, cur ? frac(cur) : 0, cur ? 'live' : 'idle');
+  $('err').hidden = !sy.error; $('err').textContent = sy.error ? 'Last check failed: ' + sy.error : '';
+  $('sync').disabled = !s.connected || sy.running; $('stop').hidden = !sy.running;
+  $('last').textContent = sy.running ? '' : ago(sy.last_run);
+
+  const ul = $('list');
+  if (!items.length) {
+    ul.innerHTML = `<div class="empty">${!s.connected ? 'Sign in to start downloading your videos.' :
+      sy.last_run ? 'No new videos to download.' : 'Nothing yet. Press Check for new videos.'}</div>`;
+  } else {
+    const order = {downloading:0, failed:1, queued:2, done:3};
+    const sorted = [...items].sort((a,b) => order[a.status]-order[b.status]);
+    const MAX = 30, shown = sorted.slice(0, MAX);
+    ul.innerHTML = '';
+    if (sorted.length > MAX) {
+      const more = document.createElement('div'); more.className = 'empty';
+      more.textContent = `Showing ${MAX} of ${sorted.length} videos. The rest are waiting or done.`;
+      ul.appendChild(more);
+    }
+    shown.forEach(it => {
+      const li = document.createElement('li'); li.className = it.status;
+      li.innerHTML = '<span class="n"></span><div class="strip small"></div><span class="s"></span>';
+      li.querySelector('.n').textContent = it.name; li.querySelector('.n').title = it.error || it.name;
+      li.querySelector('.s').textContent = LABEL[it.status];
+      strip(li.querySelector('.strip'), 20, frac(it), it.status==='done' ? 'ok' : it.status==='failed' ? 'bad' : '');
+      ul.appendChild(li);
+    });
+  }
+  if (!focused) { $('out').value = s.cfg.output; $('tld').value = s.cfg.tld; $('auto').checked = s.cfg.auto; $('interval').value = s.cfg.interval; $('trash').checked = !!s.cfg.trash; }
+}
+
+async function tick() { try { if (api()) render(await api().get_state()); } catch (e) {} setTimeout(tick, 1000); }
+window.addEventListener('pywebviewready', tick);
+
+$('signin').onclick = () => api().sign_in();
+$('signout').onclick = () => api().sign_out();
+$('sync').onclick = () => api().sync_now();
+$('stop').onclick = () => api().stop_sync();
+$('browse').onclick = () => api().choose_folder();
+const save = () => api().set_config({tld: $('tld').value, auto: $('auto').checked, trash: $('trash').checked, interval: Math.max(5, +$('interval').value || 30)});
+['tld','auto','interval','trash'].forEach(id => { $(id).onchange = save; $(id).onfocus = () => focused = true; $(id).onblur = () => focused = false; });
+</script>
+</body>
+</html>
